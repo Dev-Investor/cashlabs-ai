@@ -1,0 +1,101 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: users
+    // Document ID: {uid}
+    // Fields:
+    //   - uid: string (required)
+    //   - fullName: string (required)
+    //   - email: string (required)
+    //   - country: string (required)
+    //   - experienceLevel: string (required)
+    //   - plan: string (required, enum: START, PRO, FUNDADOR)
+    //   - createdAt: number (required)
+    //
+    // Collection: diagnoses
+    // Document ID: {diagnosisId}
+    // Fields:
+    //   - userId: string (required)
+    //   - userPlan: string (required)
+    //   - input: map (required)
+    //   - output: map (required)
+    //   - createdAt: number (required)
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && 
+        request.auth.token.email == "alexanderhs024@gmail.com";
+    }
+    
+    function isValidEmail(email) {
+      return email is string && email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$");
+    }
+
+    function hasRequiredFields(fields) {
+      return request.resource.data.keys().hasAll(fields);
+    }
+
+    // ===============================================================
+    // Domain Validators
+    // ===============================================================
+
+    function isValidUser(data) {
+      return hasRequiredFields(['uid', 'fullName', 'email', 'country', 'experienceLevel', 'plan', 'createdAt']) &&
+             data.uid == request.auth.uid &&
+             data.fullName is string &&
+             isValidEmail(data.email) &&
+             data.plan in ['START', 'PRO', 'FUNDADOR'];
+    }
+
+    function isValidDiagnosis(data) {
+      return hasRequiredFields(['userId', 'userPlan', 'input', 'output', 'createdAt']) &&
+             data.userId == request.auth.uid &&
+             data.userPlan in ['START', 'PRO', 'FUNDADOR'];
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /users/{uid} {
+      allow read: if isOwner(uid) || isAdmin();
+      allow create: if isOwner(uid) && isValidUser(request.resource.data);
+      allow update: if isOwner(uid) && isValidUser(request.resource.data) && 
+                      request.resource.data.createdAt == resource.data.createdAt;
+    }
+
+    match /diagnoses/{diagnosisId} {
+      allow read: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isAuthenticated() && isValidDiagnosis(request.resource.data);
+      allow delete: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
+    }
+
+    match /audit_logs/{logId} {
+      allow read: if isAdmin();
+      allow write: if false; // Only backend (Admin SDK) can write
+    }
+
+    match /{path=**} {
+      allow read, write: if false;
+    }
+  }
+}

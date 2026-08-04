@@ -1,0 +1,58 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "User Profile",
+      "description": "Store user profile information and subscription status.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "Firebase Auth UID" },
+        "fullName": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "country": { "type": "string" },
+        "experienceLevel": { "type": "string" },
+        "plan": { "type": "string", "enum": ["START", "PRO", "FUNDADOR"] },
+        "createdAt": { "type": "number" }
+      },
+      "required": ["uid", "fullName", "email", "country", "experienceLevel", "plan", "createdAt"]
+    },
+    "Diagnosis": {
+      "title": "Diagnosis",
+      "description": "Stores the generated monetization route for a user.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "userPlan": { "type": "string" },
+        "input": { "type": "object" },
+        "output": { "type": "object" },
+        "createdAt": { "type": "number" }
+      },
+      "required": ["userId", "userPlan", "input", "output", "createdAt"]
+    },
+    "AuditLog": {
+      "title": "Audit Log",
+      "description": "Backend execution logs for administration.",
+      "type": "object",
+      "properties": {
+        "timestamp": { "type": "object" },
+        "userId": { "type": "string" },
+        "userPlan": { "type": "string" },
+        "status": { "type": "string" },
+        "executionTimeMs": { "type": "number" }
+      }
+    }
+  },
+  "firestore": {
+    "/users/{uid}": {
+      "schema": "UserProfile",
+      "description": "User profile documents"
+    },
+    "/diagnoses/{diagnosisId}": {
+      "schema": "Diagnosis",
+      "description": "Generated monetization routes"
+    },
+    "/audit_logs/{logId}": {
+      "schema": "AuditLog",
+      "description": "Backend audit logs"
+    }
+  }
+}
