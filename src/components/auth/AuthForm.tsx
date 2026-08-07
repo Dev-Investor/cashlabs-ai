@@ -6,7 +6,8 @@ import {
   updateProfile,
   sendPasswordResetEmail,
   GoogleAuthProvider,
-  signInWithPopup
+signInWithRedirect,
+getRedirectResult
 } from 'firebase/auth';
 import { doc, setDoc, getDoc } from 'firebase/firestore';
 import { Button } from '../ui/button';
@@ -37,6 +38,35 @@ export function AuthForm() {
     confirmPassword: '',
     country: ''
   });
+
+React.useEffect(() => {
+  getRedirectResult(auth).then(async (result) => {
+    if (result) {
+      const user = result.user;
+      const docRef = doc(db, 'users', user.uid);
+      const docSnap = await getDoc(docRef);
+
+      if (!docSnap.exists()) {
+        const userProfile = {
+          uid: user.uid,
+          fullName: user.displayName || 'Usuario de Google',
+          email: user.email || '',
+          country: 'No especificado',
+          experienceLevel: 'No especificado',
+          plan: 'START',
+          createdAt: Date.now()
+        };
+        await setDoc(docRef, userProfile);
+      }
+      toast.success('¡Bienvenido!');
+    }
+  }).catch((error) => {
+    console.error(error);
+    if (error.code) {
+      toast.error(error.message || 'Error al iniciar sesión con Google');
+    }
+  });
+}, []);
 
   const passwordRequirements = {
     hasUppercase: /[A-Z]/.test(formData.password),
@@ -133,43 +163,17 @@ export function AuthForm() {
   };
 
   const handleGoogleSignIn = async () => {
-    setLoading(true);
-    try {
-      const provider = new GoogleAuthProvider();
-      const result = await signInWithPopup(auth, provider);
-      const user = result.user;
-
-      // Check if user profile exists
-      const docRef = doc(db, 'users', user.uid);
-      const docSnap = await getDoc(docRef);
-
-      if (!docSnap.exists()) {
-        // Create profile for new Google user
-        const userProfile = {
-          uid: user.uid,
-          fullName: user.displayName || 'Usuario de Google',
-          email: user.email || '',
-          country: 'No especificado',
-          experienceLevel: 'No especificado',
-          plan: 'START',
-          createdAt: Date.now()
-        };
-        await setDoc(docRef, userProfile);
-      }
-
-      toast.success('¡Bienvenido!');
-    } catch (error: any) {
-      console.error(error);
-      if (error.code === 'auth/operation-not-allowed') {
-        toast.error('El inicio de sesión con Google no está habilitado en Firebase. Por favor, actívalo en la consola.');
-      } else {
-        toast.error(error.message || 'Error al iniciar sesión con Google');
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
-
+  setLoading(true);
+  try {
+    const provider = new GoogleAuthProvider();
+    await signInWithRedirect(auth, provider);
+    // La página se redirige aquí, el resultado se procesa en el useEffect de abajo
+  } catch (error: any) {
+    console.error(error);
+    toast.error(error.message || 'Error al iniciar sesión con Google');
+    setLoading(false);
+  }
+};
   return (
     <div className="min-h-screen flex bg-deep-black">
       {/* Left Side: Branding */}
