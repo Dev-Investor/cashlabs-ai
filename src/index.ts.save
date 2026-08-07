@@ -1,0 +1,15 @@
+
+
+
+
+
+
+
+
+
+
+//11 import {onRequest} from "firebase-functions/https";
+//12 import * as logger from "firebase-functions/logger";
+
+npm run build
+
